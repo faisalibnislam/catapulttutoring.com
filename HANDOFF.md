@@ -34,7 +34,7 @@ Navigation: Subjects, Our approach, Tutors, Reviews, FAQ, Current students. Prim
 
 - Eyebrow: Math, science, English and more
 - H1: One-on-one online tutoring that builds understanding and confidence
-- Lead: We match each student with the right tutor, in relaxed sessions where questions are welcome.
+- Lead: Working virtually with students across the country to assess their needs, find their preferred style of learning, and increase their confidence and skills.
 - Buttons: Find the right tutor / Explore subjects
 - Visual: an illustrated worked problem on graph paper. A student's margin note asks "why does it come back down?" and the tutor replies "Good question! Let's check the slope." It's an illustration, not a photo of a real session.
 
