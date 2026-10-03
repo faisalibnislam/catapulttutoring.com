@@ -187,6 +187,108 @@
     select.focus();
   });
 
+  /* Auto-rotation shared by the hero scenes and the reviews carousel.
+     Each step is timed by a CSS animation on a .progress element, so pausing
+     (hover, focus, off-screen or the user's toggle) freezes it in place. */
+  function rotator(el, count, show, barFor) {
+    var state = { index: 0, user: false, hover: false, focus: false, inView: true };
+    function sync() {
+      el.classList.toggle('is-paused', state.user || state.hover || state.focus || !state.inView);
+    }
+    function go(i) {
+      var prev = state.index;
+      state.index = (i + count) % count;
+      show(state.index, prev);
+      $$('.progress', el).forEach(function (b) { b.classList.remove('run'); });
+      var bar = barFor(state.index);
+      void bar.offsetWidth;
+      bar.classList.add('run');
+    }
+    el.addEventListener('animationend', function (e) {
+      if (e.target.classList.contains('progress')) go(state.index + 1);
+    });
+    el.addEventListener('mouseenter', function () { state.hover = true; sync(); });
+    el.addEventListener('mouseleave', function () { state.hover = false; sync(); });
+    el.addEventListener('focusin', function () { state.focus = true; sync(); });
+    el.addEventListener('focusout', function (e) {
+      if (!el.contains(e.relatedTarget)) { state.focus = false; sync(); }
+    });
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (entries) {
+        state.inView = entries[0].isIntersecting; sync();
+      }, { threshold: 0.35 }).observe(el);
+    }
+    go(0);
+    sync();
+    return {
+      go: go,
+      next: function () { go(state.index + 1); },
+      prev: function () { go(state.index - 1); },
+      toggle: function () { state.user = !state.user; sync(); return state.user; }
+    };
+  }
+
+  /* Hero: the sheet cycles through one tutoring moment per subject */
+  var sheet = $('[data-scenes]');
+  if (sheet) {
+    var scenes = $$('[data-scene]', sheet);
+    var sceneTabs = $$('.scene-tab', sheet);
+    var hero = rotator(sheet, scenes.length, function (i) {
+      scenes.forEach(function (s, k) {
+        s.classList.toggle('is-active', k === i);
+        s.setAttribute('aria-hidden', k === i ? 'false' : 'true');
+      });
+      sceneTabs.forEach(function (t, k) {
+        t.classList.toggle('is-active', k === i);
+        t.setAttribute('aria-pressed', k === i ? 'true' : 'false');
+      });
+    }, function (i) { return $('.progress', sceneTabs[i]); });
+    $('[data-scene-tabs]', sheet).hidden = false;
+    sceneTabs.forEach(function (t, k) {
+      t.addEventListener('click', function () { hero.go(k); });
+    });
+  }
+
+  /* Reviews carousel */
+  var carRoot = $('[data-carousel-root]');
+  if (carRoot) {
+    var slides = $$('[data-carousel] .quote', carRoot);
+    var carBar = $('[data-carousel] .progress', carRoot);
+    var carControls = $('[data-carousel-controls]', carRoot);
+    var carCurrent = $('[data-current]', carRoot);
+    var carToggle = $('[data-toggle]', carRoot);
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+    var reviews = rotator(carRoot, slides.length, function (i, prev) {
+      slides.forEach(function (s, k) {
+        var on = k === i;
+        s.classList.toggle('is-active', on);
+        s.classList.toggle('is-leaving', k === prev && !on);
+        s.setAttribute('aria-hidden', on ? 'false' : 'true');
+        s.inert = !on;
+      });
+      carCurrent.textContent = pad(i + 1);
+    }, function () { return carBar; });
+
+    carControls.hidden = false;
+    $('[data-prev]', carRoot).addEventListener('click', reviews.prev);
+    $('[data-next]', carRoot).addEventListener('click', reviews.next);
+    carToggle.addEventListener('click', function () {
+      var off = reviews.toggle();
+      carToggle.classList.toggle('is-off', off);
+      carToggle.setAttribute('aria-label', off ? 'Play reviews' : 'Pause reviews');
+    });
+
+    var touchX = null;
+    carRoot.addEventListener('touchstart', function (e) { touchX = e.touches[0].clientX; }, { passive: true });
+    carRoot.addEventListener('touchend', function (e) {
+      if (touchX === null) return;
+      var dx = e.changedTouches[0].clientX - touchX;
+      if (Math.abs(dx) > 40) dx < 0 ? reviews.next() : reviews.prev();
+      touchX = null;
+    });
+  }
+
   /* Contact form validation.
      There is no submission backend yet, so a valid form shows an honest preview notice
      and nothing is sent. Replace handleValidSubmit with the real request when connected. */
